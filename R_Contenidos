@@ -1,0 +1,216 @@
+library(tidyverse)
+library(sys)
+library(lubridate)
+
+
+#upload tables
+
+metadata = read.csv("C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/content_metadata_copy--2021_03_11.csv", sep = ';',header = TRUE)
+genres = read.csv("C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_genre.csv", header = TRUE)
+metadata_availability = read.csv("C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_availability--2021_04_21.csv", sep = ',',header = TRUE)
+country_mapping = read.csv("C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/mapping paises.csv", sep = ',',header = TRUE)
+
+
+#TABLA CONTENIDO
+
+
+#CREAMOS UNA TABLA SERIES_THRESHOLD
+
+#crear nueva tabla threshold que muestra el capitulo que representa el 50% de la primer temporada de una serie 
+series_threshold = metadata %>% 
+  filter(CONTENT_CLASS== 'series' & SEASON_NUMBER == 1)  %>% 
+  group_by(PARTNERSERIESID,CONTENT_CLASS,SEASON_NUMBER)  %>% 
+  summarise(max_episode = max(SEASON_EPISODE_NUMBER)) %>% rowwise()%>% 
+  mutate(threshold = as.integer(max_episode / 2))
+
+#escribir
+write.csv(series_threshold,"C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_threshold.csv",row.names = FALSE)                          
+
+
+#TABLA CONTENIDO: LIMPIEZA Y TRANSFORMACION
+#me quedo solo con movies, shorts, y series
+metadata = metadata %>% filter(CONTENT_CLASS == 'series' |CONTENT_CLASS == 'short-form'|CONTENT_CLASS == 'movie' )
+
+#crear nuevo id - si es serie es el parternserieID y si no es programID
+metadata = metadata %>% 
+  mutate(
+    idmix = case_when(
+      CONTENT_CLASS == 'series' ~ as.character(PARTNERSERIESID),
+      CONTENT_CLASS != 'series'  ~ as.character(PROGRAMID),
+      TRUE                      ~ "other"
+    ))
+
+#creo un nuevo title - si es serie es el serie title y si no es program title
+metadata = metadata %>% 
+  mutate(
+    titlemix = case_when(
+      CONTENT_CLASS == 'series' ~ as.character(SERIES_FULL_TITLE),
+      CONTENT_CLASS != 'series'  ~ as.character(PROGRAM_FULL_TITLE),
+      TRUE                      ~ "other"
+    ))
+
+
+#me guardo un mapeo de program id- serie id antes de unificar las series, excluyendo el desglose de program dentro de cada serie
+#me quedo con una tabla mapeo de program - serie - mix
+metadata_mapping = metadata %>% select('PROGRAMID','PARTNERSERIESID','idmix','PROGRAM_FULL_TITLE','SERIES_FULL_TITLE','titlemix')
+#escribir
+write.csv(metadata_mapping,"C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_mapping.csv",row.names = FALSE)                          
+
+
+
+#El campo release year hace que se generen repetidos de idmix en el caso de las series.  
+#vamos a dejar solo el año minimo "realease year" y generar una variable que calcule año max - año mix = "period"
+
+#tabla años minimo
+min_year = metadata %>% 
+  group_by(idmix) %>%
+  summarise(RELEASE_YEAR_MIN = min(RELEASE_YEAR)) 
+
+min_year = min_year %>% 
+  mutate(
+    RELEASE_YEAR_MIN = case_when(
+      RELEASE_YEAR_MIN == 3000 ~ format(Sys.time(), "%Y"),
+      TRUE ~ as.character(RELEASE_YEAR_MIN)))
+
+min_year$RELEASE_YEAR_MIN = as.integer(min_year$RELEASE_YEAR_MIN)
+
+
+
+#tabla año maximo
+max_year = metadata %>% 
+  group_by(idmix) %>%
+  summarise(MAX_YEAR = max(RELEASE_YEAR)) 
+
+
+max_year = max_year %>% 
+  mutate(
+    MAX_YEAR = case_when(
+      MAX_YEAR == 3000 ~ format(Sys.time(), "%Y"),
+      TRUE ~ as.character(MAX_YEAR)))
+
+max_year$MAX_YEAR = as.integer(max_year$MAX_YEAR)
+
+
+
+#uno por id mix - min - max
+release = left_join(min_year, max_year, by = c("idmix" = "idmix"), copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+#agrego variable perdiodo = max - min +1 (porque el año de lanzamiento cuenta como un año)
+release$period = release$MAX_YEAR - release$RELEASE_YEAR_MIN + 1
+
+
+#uno release year y period a la metadata
+metadata = left_join(metadata, release, by = c("idmix" = "idmix"), copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+#elimino tablas auxiliares
+remove(release)
+remove(max_year)
+remove(min_year)
+
+#elimino la columna release_year de metadata que generaba los duplicados
+metadata$RELEASE_YEAR = NULL
+
+
+
+#CONTENIDO AVAILABILITY
+#me quedo solo con LATAM
+metadata_availability = metadata_availability %>% filter(REGION == "LATAM")
+
+#rename mapping
+country_mapping = rename(country_mapping, COUNTRY = Fact.Disney.Real.Time.Signups.V2.Account.Home.Country)
+
+#agrego la region
+metadata_availability = left_join(metadata_availability,country_mapping,
+                                  by = c("COUNTRY" = "COUNTRY"), 
+                                  copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+#traigo el mixid para cada metadataid
+metadata_availability = left_join(metadata_availability, metadata%>% select("METADATAID","idmix","titlemix"),
+                                  by = c("ï..METADATAID" = "METADATAID"), 
+                                  copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+
+#renombro 
+metadata_availability = rename(metadata_availability, content_region = Dim.Disney.Country.Region.Mapping.CP.A.Regions...Level.2)
+
+
+#elimino columnas q no necesito y elimino duplicados
+metadata_availability = metadata_availability %>% select("content_region",
+                                                         "idmix")%>% 
+  distinct()
+
+#pivoteamos las regiones, y dejamos un booleano por cada una, q cuenta 1 si esta disponible en la region, 0 cc.
+metadata_availability['dummy']=1   
+
+
+metadata_availability = metadata_availability %>% 
+  group_by(idmix,content_region) %>%
+  summarise(dummy = mean(dummy)) %>%
+  pivot_wider(names_from = content_region, values_from = dummy) %>% distinct()    #pivoteo los generos, y las dummies las promedio para que queden 1 si el mixid es ese genero 0 cc.
+
+
+
+#TRAIGO LA DISPONIBILIDAD DE CADA TITULO EN LATAM A TRAVES DE LA TABLA METADATA AVAILABILITY
+
+#ahora traigo la data de availability y otros atributor q quiero de content tracker
+metadata = left_join(metadata, metadata_availability , by = c("idmix" = "idmix"), copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+#creo una nueva varible que vale 1 en caso de que en alguna region de latam este disponible el contenido 0 en cc.
+metadata = metadata %>% 
+  mutate(
+    latam_available = case_when(
+      Brazil == 1 | Caribbean == 1 | LATAM_HISP == 1  ~ 1,
+                                                TRUE  ~ 0))
+
+
+#nos quedamos con las variables descriptivas que nos importan, teniendo solo un registro por serie, y un programa por movies y short forms
+metadata_short = metadata %>% select("PROGRAMTYPE", "CONTENT_CLASS", "IS_ANIMATED", "BRANDS_DETAILED","BRANDS", "FRANCHISES", 
+                                     "IS_DISNEY_PLUS_ORIGINAL", "IS_PAY_1", "BUSINESS_UNIT", "PRODUCTION_COMPANY",
+                               "idmix", "titlemix",   "RELEASE_YEAR_MIN","MAX_YEAR","period" ,
+                               "Brazil","Caribbean","LATAM_HISP","latam_available"  )  %>% 
+                    distinct() 
+
+
+
+write.csv(metadata_short,"C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_singenres_mixid.csv",row.names = FALSE)                          
+
+
+
+
+#TABLA GENRES
+#TRANSFORM GENRES
+genres = rename(genres, media_id = ï..MEDIAID) #rename
+genres = genres %>% select('media_id','GENRE_NAMES')  #me quedo con las dos columnas q me importan
+genres = genres %>% filter(media_id != '')            #saco los media id vacios
+
+genres = left_join(genres, metadata %>% select('MEDIAID','idmix'), 
+                   by = c("media_id" = "MEDIAID"), copy = FALSE, 
+                   suffix = c(".x", ".y"), keep = FALSE)  #traigo la mixid que engloba los media id y es mejor para traer el genero de todos
+
+genres$media_id = NULL            #descarto media_id 
+
+genres['dummy']=1   
+
+genres = genres %>% distinct()#agrego una dummy para poder pivotear
+
+#escribo una solo de generos para usar en looker -  teniendo una sola columna de genero y reptiendo los id mix
+write.csv(genres,"C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_genres_mixid.csv",row.names = FALSE)                          
+
+                                     
+
+genres = genres %>% 
+  group_by(idmix,GENRE_NAMES) %>%
+  summarise(dummy = mean(dummy)) %>%
+  pivot_wider(names_from = GENRE_NAMES, values_from = dummy)     #pivoteo los generos, y las dummies las promedio para que queden 1 si el mixid es ese genero 0 cc.
+  
+
+#TABLA METADATA COMPLETA
+#uno a la tabla de metadata las columnas dummies de genero a traves del idmix - estructura pivot para trabajar el modelo de cluster de contenido
+metadata_short_genero = left_join(metadata_short, genres, by = c("idmix" = "idmix"), copy = FALSE, suffix = c(".x", ".y"), keep = FALSE)
+
+
+#escribir
+write.csv(metadata_short_genero,"C:/Users/jsantare/OneDrive - The Walt Disney Company/Documents/Data Science/DSS/Proyecto Churn by Clusters/metadata_clustering.csv",row.names = FALSE)                          
+
+
+
