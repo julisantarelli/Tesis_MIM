@@ -1,0 +1,22 @@
+copy into 's3://dt-feed-disney-plus-churn-prd/content_account_watches_05-19/'
+from 
+(
+  
+
+  SELECT CONTENT_UNIT_ID,  CONTENT_TITLE, sum(METRIC_VALUE) as ACCOUNT_WATCHES											
+FROM IMMUTA_DSS_PROD.DISNEY_PLUS.FACT_DISNEY_CONTENT_METRIC_STORE_V															
+Where GEO_GRAIN_VALUE in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+and (BUSINESS_DATE = (select MAX(BUSINESS_DATE) from IMMUTA_DSS_PROD.DISNEY_PLUS.FACT_DISNEY_CONTENT_METRIC_STORE_V))
+and (CONTENT_UNIT_TYPE in ('movie','short-form','series'))
+and (METRIC_NAME in ('Num Accounts Watched'))
+and (TIME_SCALE = 'L28')
+group by CONTENT_UNIT_ID,  CONTENT_TITLE
+order by ACCOUNT_WATCHES DESC
+)
+credentials = (aws_key_id='AKIAZWZ3FA4AN3B5WYOX' aws_secret_key='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' )
+file_format = (TYPE = PARQUET )
+OVERWRITE = TRUE
+HEADER = TRUE
