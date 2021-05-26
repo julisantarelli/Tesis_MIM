@@ -1,0 +1,57 @@
+CREATE OR REPLACE TABLE `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.account_content_centroid_train` as
+
+-- mapeo el cluster a cada watch, osae que cada cuenta va a haber visto contenido de muchos clusters. 
+
+-- TRAIGO EL CLSUTER DE CADA CONTENIDO VISTO
+
+with watches_all_cluster as
+(
+SELECT a.ACCOUNT_ID , a.PROFILE_ID, a.ID, a.complete_watches, c.CENTROID_ID,
+from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_all_first_train` as a
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as c
+on a.ID = c.idmix
+),
+
+-- ahora hago unas transformaciones para quedarme con un cluster por cuenta. se elige el cluster que mas complete watches tenga por cuenta 
+
+-- cuento cuantos complete streams hay por cuenta y por cluster
+-- dejamos de lado los titulos q se vieron q no tienen un cluster definido, 
+--  esto es porque no estan en el listado de metadata clustering, la gran mayoria suelen ser que no estan habilitados en latam, 
+group_account as 
+(
+SELECT ACCOUNT_ID,  CENTROID_ID, sum(complete_watches) as seen FROM watches_all_cluster
+where CENTROID_ID is not null
+group by ACCOUNT_ID, CENTROID_ID
+)
+
+-- tarigo el maximo por cluster
+, cluster_max as
+(
+select ACCOUNT_ID, CENTROID_ID, seen,
+       MAX(seen) OVER(PARTITION BY ACCOUNT_ID) AS max, 
+from group_account
+)
+
+-- agrego un dummy que diga cual cluster es maximo
+, cluster_max_dummy as
+(
+select *,
+case when max = seen then 1 else 0 end as max_dummy
+from cluster_max
+order by ACCOUNT_ID
+)
+
+
+-- me quedo con el cluster maximo y agrego un recuento de filas por 
+, cluster_max_only_row as
+(
+select *,
+ROW_NUMBER() OVER(PARTITION BY ACCOUNT_ID ORDER BY RAND()) AS row, 
+from cluster_max_dummy where max_dummy = 1 
+)
+
+--selecciono solo una fila por account
+select * from 
+cluster_max_only_row
+where row = 1
+
