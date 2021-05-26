@@ -1,0 +1,66 @@
+CREATE OR REPLACE TABLE `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_all_first_train`
+as 
+
+-- first watch mix id: hacemos una tabla de first watches en donde mapeamos el IDMIX.
+-- en caso de ser serie: SERIEID y sino el PROGRAMID
+
+WITH acc_first_watches_mixid AS
+(
+SELECT ACCOUNT_ID, idmix, 1 as first_watch 
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.acc_first_watches` 
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_mapping` 
+on FIRST_STREAM_PROGRAM_ID =  PROGRAMID
+group by ACCOUNT_ID, idmix
+),
+
+-- series threshold: filtramos los watche de series
+
+
+-- en caso de ser un first watch, se cuenta como 1 mas alla de que no haya visto mas del 50% de la primera temporada
+watched_series_first_dummy as
+(
+select a.ACCOUNT_ID, PROFILE_ID, ID, PROGRAM_TYPE, MAX_EPISODE_SERIES_SEQUENCE_NUMBER_, SEEN, 
+case when ID = idmix then 1 else 0 end as first
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_series_train` as a 
+left join acc_first_watches_mixid as b
+on a.ACCOUNT_ID = b.ACCOUNT_ID
+),
+
+-- del resto nos quedamos solamente con los watch de series que hayan superado el 50% de la primera temporada
+watches_series_threshold AS
+(
+select ACCOUNT_ID, 'first' as PROFILE_ID, ID, PROGRAM_TYPE, AVG(SEEN) as SEEN, 
+FROM watched_series_first_dummy
+where first = 1
+group by ACCOUNT_ID, PROFILE_ID, ID, PROGRAM_TYPE
+
+UNION ALL
+
+SELECT a.* EXCEPT( MAX_EPISODE_SERIES_SEQUENCE_NUMBER_ , first)
+FROM watched_series_first_dummy as a 
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_threshold` as b
+on a.ID = b.PARTNERSERIESID
+where a.MAX_EPISODE_SERIES_SEQUENCE_NUMBER_ > b.threshold
+and first = 0
+),
+
+-- watch all: unimos los watch de series movies y short forms
+
+watches_all AS
+
+(
+SELECT *
+FROM watches_series_threshold
+UNION ALL
+SELECT *
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_movies_shorts_train`
+)
+
+-- watch all first: aquellos watch que ademas sean first watch, cuentan como 5 seen. 
+SELECT 
+a.ACCOUNT_ID, a.PROFILE_ID, a.ID, a.PROGRAM_TYPE, a.SEEN , b.first_watch  , 
+CASE WHEN b.first_watch is not null then (a.SEEN + (b.first_watch *5)) else a.SEEN end as complete_watches
+FROM watches_all as a
+left join acc_first_watches_mixid as b
+on a.ACCOUNT_ID = b.ACCOUNT_ID 
+AND a.ID = b.idmix
