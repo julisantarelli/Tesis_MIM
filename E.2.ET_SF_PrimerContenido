@@ -1,0 +1,21 @@
+copy into 's3://dt-feed-disney-plus-churn-prd/acc_first_watches_04-09/'
+  from 
+  
+  (SELECT ACCOUNT_ID, FIRST_STREAM_PROGRAM_ID, FIRST_STREAM_PROGRAM_TITLE
+FROM IMMUTA_DSS_PROD.DISNEY_PLUS.FACT_DISNEY_ACCOUNT_FIRST_WATCHES
+WHERE 
+ ( ACCOUNT_ID in (select ACCOUNT_ID from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS" 
+                 where ACCOUNT_ID IS NOT NULL 
+                              AND DS=(select MAX(DS) from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS") 
+                              and (IS_PRIMARY = 1)
+                              and ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA'))       
+                 ))
+  
+
+  credentials = (aws_key_id='AKIAZWZ3FA4AN3B5WYOX' aws_secret_key='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' )
+  file_format = (TYPE = PARQUET )
+  OVERWRITE = TRUE
+  HEADER = TRUE;
