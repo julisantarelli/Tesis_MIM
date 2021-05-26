@@ -1,0 +1,305 @@
+copy into 's3://dt-feed-disney-plus-churn-prd/Dataset_churn_2021-05-19/'
+  from (
+     WITH SUBSCRIPTIONS AS (select DS, ACCOUNT_ID, SUBSCRIPTION_STATE, PREVIOUS_SUBSCRIPTION_STATE, PRODUCT_NAME, 
+                        HAS_EVER_HAD_FT, FREE_TRIAL_LENGTH, END_DATE, START_DATE as RECENT_START_DATE,
+                        RENEWAL_TIMESTAMP_EST, SUBSCRIPTION_START_COHORT_DATE, SUBSCRIPTION_RENEWAL_COHORT_DATE, 
+                        SUBSCRIPTION_LENGTH,
+                        SUBSCRIPTION_TYPE, BILLING_PLATFORM, ACCOUNT_HOME_COUNTRY, PRE_LAUNCH_COHORT, IS_ENTITLED_ACCOUNT, 
+                        IS_PRIMARY, SUBSCRIPTION_PERIOD_NUMBER, EXPECTED_RENEWAL_DATE, IS_RENEWAL_EVENT, 
+                        IS_FREE_TRIAL_CONVERSION_EVENT, PREVIOUS_DIFFERENT_STATE, PREVIOUS_DIFFERENT_STATE_DS, 
+                        ACTIVATION_DATE,CAMPAIGN_CODE,VOUCHER_CODE,SUBSCRIPTION_SOURCE,	
+                        PRODUCT_SKU_PLATFORM,SUBSCRIPTION_REPORTING_TYPE,
+                        PURCHASE_DEVICE_TYPE, SUBSCRIPTION_MODEL,  
+                        SUBSCRIPTION_SOURCE_SALES_PLATFORM
+                        from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS" 
+                        where ACCOUNT_ID IS NOT NULL 
+                              and SUBSCRIPTION_LENGTH != '1-year'
+                              and SUBSCRIPTION_PARTNERSHIP is null
+                              AND DS=(select MAX(DS)-30 from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS") 
+                              and (IS_PRIMARY = 1)
+                              and (SUBSCRIPTION_STATE in ('paid', 'paid_grace'))
+                              and ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')), 
+    
+ START_DATE AS (SELECT ACCOUNT_ID, MIN(START_DATE) AS START_DATE
+                                  FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS"
+                                  where ACCOUNT_ID IS NOT NULL 
+                                  and (IS_PRIMARY = 1)
+                                  and (IS_ENTITLED = 1)
+                                  and ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+                                  GROUP BY ACCOUNT_ID),
+    
+ LABEL AS (select ACCOUNT_ID, 1 as churned
+                        from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS" 
+                        where ACCOUNT_ID IS NOT NULL 
+                              AND DS=(select MAX(DS) from "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_SUBSCRIPTIONS") 
+                              and (IS_PRIMARY = 1)  
+                              and (SUBSCRIPTION_STATE in ( 'paid_cancel','churned'))
+                              and (PREVIOUS_SUBSCRIPTION_STATE != 'paid_hold')
+                              and ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')), 
+ 
+ DEVICES AS (SELECT ACCOUNT_ID, COUNT(distinct DEVICE_ID) AS DEVICE_COUNT
+                FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_ACCOUNT_DEVICE_XREF_V"
+                WHERE ACCOUNT_ID IS NOT NULL 
+                AND FIRST_SESSION_DATE <= (select MAX(FIRST_SESSION_DATE)-30 FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_ACCOUNT_DEVICE_XREF_V")
+                GROUP BY ACCOUNT_ID), 
+    
+    
+    
+ BRAND_SEGMENT AS (SELECT BS1.ACCOUNT_ID, HAS_ANY_KIDS_PROFILE_STREAMING, SEGMENT_LABEL as BRAND_SEGMENT
+                  FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."TC_BRAND_SEGMENTS" BS1
+                   JOIN (SELECT ACCOUNT_ID, MAX(DS) AS DS
+                            FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."TC_BRAND_SEGMENTS"
+                            WHERE SEGMENT_TYPE='brand' AND IS_ENTITLED_L1='1'
+                            AND DS <= (SELECT MAX(DS)-30 AS MAXDS FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."TC_BRAND_SEGMENTS" )
+                            GROUP BY ACCOUNT_ID) BS2
+                   ON BS1.ACCOUNT_ID=BS2.ACCOUNT_ID AND BS1.DS=BS2.DS
+                   WHERE BS1.ACCOUNT_ID IS NOT NULL AND SEGMENT_TYPE='brand'
+                        ),
+    
+    
+ENGAGEMENT AS (SELECT E1.ACCOUNT_ID, 
+                        TOTAL_LOGIN_DAYS_L7, TOTAL_LOGIN_DAYS_L28, TOTAL_LOGIN_DAYS_ITD,
+                        TOTAL_STREAMS_L7, TOTAL_STREAMS_L28, TOTAL_STREAMS_ITD, 
+                        NUM_STREAMING_PROFILES_L7, NUM_STREAMING_PROFILES_L28, NUM_STREAMING_PROFILES_ITD,
+                        NUM_STREAMING_DEVICES_L7, NUM_STREAMING_DEVICES_L28, NUM_STREAMING_DEVICES_ITD, 
+                        ACCOUNT_TOTAL_STREAM_DAYS_L7, ACCOUNT_TOTAL_STREAM_DAYS_L28, ACCOUNT_TOTAL_STREAM_DAYS_ITD, 
+                        TOTAL_STREAM_TIME_MS_L7, TOTAL_STREAM_TIME_MS_L28, TOTAL_STREAM_TIME_MS_ITD,               
+                        TOTAL_STREAM_TIME_WEB_MS_ITD, TOTAL_STREAM_TIME_MOBILE_MS_ITD, TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD, TOTAL_STREAM_TIME_UNKNOWN_MS_ITD,
+                        DAYS_SINCE_LAST_STREAM
+              FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_DAILY_ACCOUNT_ENGAGEMENT" E1
+              JOIN (SELECT ACCOUNT_ID, MAX(DS) AS DS
+                            FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_DAILY_ACCOUNT_ENGAGEMENT"
+                            WHERE IS_ENTITLED_L1='1' AND ACCOUNT_ID IS NOT NULL 
+                                 AND ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+                            AND DS <= (SELECT MAX(DS)-30 AS MAXDS 
+                        FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."DIM_DISNEY_DAILY_ACCOUNT_ENGAGEMENT"
+                                     where ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA'))
+                    GROUP BY ACCOUNT_ID) E2
+                   ON E1.ACCOUNT_ID=E2.ACCOUNT_ID AND E1.DS=E2.DS
+                    WHERE IS_FLAGGED = 0 AND E1.ACCOUNT_ID IS NOT NULL 
+                    and ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')),
+
+FIRST_STREAM AS (SELECT ACCOUNT_ID, FIRST_STREAM_DATE_TIME_EST
+                FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."FACT_DISNEY_ACCOUNT_FIRST_WATCHES" 
+
+                WHERE ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+                     and IS_FLAGGED = 0
+                     AND ACCOUNT_ID IS NOT NULL), 
+        
+SHARE_CONTENT AS (SELECT t.ACCOUNT_ID, sum(t.TOTAL_WATCH_LENGTH_MS) as TOTAL_WATCH_LENGTH_MS,
+                        sum(IFF(s.PROGRAM_TYPE='promotional', s.WATCH_LENGTH_MS_X_TYPE, null)) Promotional_WATCH_LENGTH_MS,
+                        sum(IFF(s.PROGRAM_TYPE='short-form', s.WATCH_LENGTH_MS_X_TYPE, null)) ShortForm_WATCH_LENGTH_MS,                
+                        sum(IFF(s.PROGRAM_TYPE='movie', s.WATCH_LENGTH_MS_X_TYPE, null)) Movie_WATCH_LENGTH_MS,
+                        sum(IFF(s.PROGRAM_TYPE='episode', s.WATCH_LENGTH_MS_X_TYPE, null)) Serie_WATCH_LENGTH_MS,
+                        sum(IFF(s.PROGRAM_TYPE='supplement', s.WATCH_LENGTH_MS_X_TYPE, null)) Supplement_WATCH_LENGTH_MS
+                        
+                  FROM (SELECT ACCOUNT_ID, PROGRAM_TYPE, sum(WATCH_LENGTH_MS) as WATCH_LENGTH_MS_X_TYPE
+                        FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."FACT_DISNEY_WATCHES"                                                    
+                        WHERE ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+                        
+                        and (START_DATE_EST <= (select MAX(START_DATE_EST)-30 FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."FACT_DISNEY_WATCHES"))
+                        and (IS_COMPLETED_STREAM = 1)
+                        GROUP BY ACCOUNT_ID, PROGRAM_TYPE) as s
+                  LEFT JOIN ((SELECT ACCOUNT_ID, sum(WATCH_LENGTH_MS) as TOTAL_WATCH_LENGTH_MS
+                              FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."FACT_DISNEY_WATCHES"                                              
+                              WHERE ACCOUNT_HOME_COUNTRY in ('CW','BQ','CO','AI','PE','VC','AR','AG','BS','SR','DM','CR','PY',
+                                                             'GY','KY','BB','HT','EC','SV','CL','GT','TC','DO','FK','BZ','VE',
+                                                             'BR','AW','KN','LC','TT','GD','JM','UY','NI','BO','BM','HN','MX',
+                                                             'VI','MS','GS','VG','PA')
+                              
+                              and (START_DATE_EST < (select MAX(START_DATE_EST)-30 FROM "IMMUTA_DSS_PROD"."DISNEY_PLUS"."FACT_DISNEY_WATCHES"))
+                              and (IS_COMPLETED_STREAM = 1)
+                              GROUP BY ACCOUNT_ID )) as t
+                   ON s.ACCOUNT_ID = t.ACCOUNT_ID
+                   GROUP BY t.ACCOUNT_ID) 
+
+
+        
+        
+SELECT S.*, 
+
+datediff(day, DS, case when SUBSCRIPTION_RENEWAL_COHORT_DATE <= DS then DS else SUBSCRIPTION_RENEWAL_COHORT_DATE end) as DAY_TO_RENEWAL,
+datediff(day, case when PREVIOUS_DIFFERENT_STATE_DS <START_DATE then START_DATE else PREVIOUS_DIFFERENT_STATE_DS end ,DS) as DAY_SINCE_PREVIOUS_DIFFERENT_STATE,
+datediff(day, START_DATE, case when (END_DATE is null or  END_DATE > DS ) then DS else END_DATE end) as Age_in_days, 
+datediff(month, START_DATE, case when (END_DATE is null or  END_DATE > DS ) then DS else END_DATE end) as Age_in_months,   
+
+START_DATE,
+DEVICE_COUNT, BRAND_SEGMENT, HAS_ANY_KIDS_PROFILE_STREAMING, 
+
+COALESCE(churned,0) AS CHURN,
+
+-- las metricas de x dias en el caso que el suscriptor no tenga ea suficiente antiguedad de dias, le pongo cero. 
+    
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then TOTAL_STREAMS_L7 else NULL end as TOTAL_STREAMS_L7,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then NUM_STREAMING_PROFILES_L7 else NULL end as NUM_STREAMING_PROFILES_L7,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then NUM_STREAMING_DEVICES_L7 else NULL end as NUM_STREAMING_DEVICES_L7,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then ACCOUNT_TOTAL_STREAM_DAYS_L7 else NULL end as ACCOUNT_TOTAL_STREAM_DAYS_L7,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then TOTAL_STREAM_TIME_MS_L7 else NULL end as  TOTAL_STREAM_TIME_MS_L7,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 7 then TOTAL_LOGIN_DAYS_L7 else NULL end as  TOTAL_LOGIN_DAYS_L7,
+
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28 then TOTAL_STREAMS_L28 else NULL end as TOTAL_STREAMS_L28,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28then NUM_STREAMING_PROFILES_L28 else NULL end as NUM_STREAMING_PROFILES_L28,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28 then NUM_STREAMING_DEVICES_L28 else NULL end as NUM_STREAMING_DEVICES_L28,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28 then ACCOUNT_TOTAL_STREAM_DAYS_L28 else NULL end as ACCOUNT_TOTAL_STREAM_DAYS_L28,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28 then TOTAL_STREAM_TIME_MS_L28 else NULL end as  TOTAL_STREAM_TIME_MS_L28,
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 28 then TOTAL_LOGIN_DAYS_L28 else NULL end as  TOTAL_LOGIN_DAYS_L28,
+
+TOTAL_LOGIN_DAYS_ITD, TOTAL_STREAMS_ITD, NUM_STREAMING_PROFILES_ITD, NUM_STREAMING_DEVICES_ITD, ACCOUNT_TOTAL_STREAM_DAYS_ITD, TOTAL_STREAM_TIME_MS_ITD, 
+
+-- calculo el promedio diario itd/age in days de cada una de las metricas
+    
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 1 then
+round(TOTAL_STREAMS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end),2) else NULL END as TOTAL_STREAMS_AVG ,
+
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 1 then
+round(ACCOUNT_TOTAL_STREAM_DAYS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end),2) else NULL END as STREAM_DAYS_OVER_AGE ,
+
+case when datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end) >= 1 then
+round(TOTAL_STREAM_TIME_MS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end),2) else NULL END as TOTAL_STREAM_TIME_MS_AVG ,
+
+
+--calculo de todas las metricas de variacion del ultimo mes sobre el ITD
+
+case when NUM_STREAMING_PROFILES_ITD=0 then NULL else 
+        round(((NUM_STREAMING_PROFILES_L28/NUM_STREAMING_PROFILES_ITD)-1),2) end AS VAR_NUM_STREAMING_PROFILES_ITD_L28,
+case when NUM_STREAMING_DEVICES_ITD=0  then NULL else 
+        round(((NUM_STREAMING_DEVICES_L28/NUM_STREAMING_DEVICES_ITD)-1),2) end AS VAR_NUM_STREAMING_DEVICES_ITD_L28,
+
+case when TOTAL_STREAMS_ITD=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)<28 then NULL else 
+        round(
+          (TOTAL_STREAMS_L28/
+           ((TOTAL_STREAMS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end))*28))
+           -1,2) end AS VAR_TOTAL_STREAMS_ITD_L28,
+    
+case when ACCOUNT_TOTAL_STREAM_DAYS_ITD=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)<28 then NULL else 
+        round(
+          (ACCOUNT_TOTAL_STREAM_DAYS_L28/
+           ((ACCOUNT_TOTAL_STREAM_DAYS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end))*28))
+           -1,2) end AS VAR_ACCOUNT_TOTAL_STREAM_DAYS_ITD_L28,
+    
+case when TOTAL_STREAM_TIME_MS_ITD=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)<28 then NULL else 
+        round(
+          (TOTAL_STREAM_TIME_MS_L28/
+           ((TOTAL_STREAM_TIME_MS_ITD/datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end))*28))
+           -1,2) end AS VAR_TOTAL_STREAM_TIME_MS_ITD_L28,
+
+--calculo de todas las metricas de variacion de la ultima semana sobre el valor promedio semanal de los ultimos 28 dias
+
+case when NUM_STREAMING_PROFILES_L28=0  then NULL else 
+        round(((NUM_STREAMING_PROFILES_L7/NUM_STREAMING_PROFILES_L28)-1),2) end AS VAR_NUM_STREAMING_PROFILES_ITD_L7,
+case when NUM_STREAMING_DEVICES_L28=0  then NULL else 
+        round(((NUM_STREAMING_DEVICES_L7/NUM_STREAMING_DEVICES_L28)-1),2) end AS VAR_NUM_STREAMING_DEVICES_ITD_L7,
+        
+case when TOTAL_STREAMS_L28=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)< 28 then NULL else 
+        round(((TOTAL_STREAMS_L7/(TOTAL_STREAMS_L28/4))-1),2) end AS VAR_TOTAL_STREAMS_L28_L7,
+
+case when ACCOUNT_TOTAL_STREAM_DAYS_L28=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)< 28  then NULL else 
+        round(((ACCOUNT_TOTAL_STREAM_DAYS_L7/(ACCOUNT_TOTAL_STREAM_DAYS_L28/4))-1),2) end AS VAR_ACCOUNT_TOTAL_STREAM_DAYS_L28_L7,
+
+case when TOTAL_STREAM_TIME_MS_L28=0 or datediff(day, START_DATE, case when END_DATE is null then DS else END_DATE end)< 28  then NULL else 
+        round(((TOTAL_STREAM_TIME_MS_L7/(TOTAL_STREAM_TIME_MS_L28/4))-1),2) end AS VAR_TOTAL_STREAM_TIME_MS_L28_L7,
+
+
+-- para el caso de login vamos a armar una metrica que mida la relacion login days y stream days
+
+case when  TOTAL_LOGIN_DAYS_L7 = 0  or TOTAL_LOGIN_DAYS_L7 is null then null
+else round(COALESCE(ACCOUNT_TOTAL_STREAM_DAYS_L7,0)/TOTAL_LOGIN_DAYS_L7,2) end as STREAMS_VS_LOGINS_DAYS_L7,
+
+case when  TOTAL_LOGIN_DAYS_L28 = 0 or   TOTAL_LOGIN_DAYS_L28 is null then null
+else round(COALESCE(ACCOUNT_TOTAL_STREAM_DAYS_L28,0)/TOTAL_LOGIN_DAYS_L28,2) end as STREAMS_VS_LOGINS_DAYS_L28,
+
+
+-- para el caso de login vamos a armar las variaciones semanales y mensuales tmb con la metrica q relaciona logins y stream days
+
+-- Variacion de la relacion en el ultimo mes vs la relacion historica
+case when TOTAL_LOGIN_DAYS_ITD=0 or TOTAL_LOGIN_DAYS_ITD is null 
+    or  ACCOUNT_TOTAL_STREAM_DAYS_ITD = 0 or ACCOUNT_TOTAL_STREAM_DAYS_ITD is null 
+    or TOTAL_LOGIN_DAYS_L28=0 or TOTAL_LOGIN_DAYS_L28 is null then null else 
+round(((COALESCE(ACCOUNT_TOTAL_STREAM_DAYS_L28,0)/TOTAL_LOGIN_DAYS_L28)/(ACCOUNT_TOTAL_STREAM_DAYS_ITD/TOTAL_LOGIN_DAYS_ITD))-1,2) end AS VAR_TOTAL_STREAMS_VS_LOGINS_DAYS_ITD_L28,
+
+-- Variacion de la relacion en el ultimo mes vs la relacion en el ultimo mes
+case when TOTAL_LOGIN_DAYS_L7=0 or TOTAL_LOGIN_DAYS_L7 is null 
+    or TOTAL_LOGIN_DAYS_L28=0 or TOTAL_LOGIN_DAYS_L28 is null 
+    or  ACCOUNT_TOTAL_STREAM_DAYS_L28 = 0 or ACCOUNT_TOTAL_STREAM_DAYS_L28 is null then null else 
+round(((COALESCE(ACCOUNT_TOTAL_STREAM_DAYS_L7,0)/TOTAL_LOGIN_DAYS_L7)/(ACCOUNT_TOTAL_STREAM_DAYS_L28/TOTAL_LOGIN_DAYS_L28))-1,2) end AS VAR_TOTAL_STREAMS_VS_LOGINS_DAYS_ITD_L7,
+
+
+
+DAYS_SINCE_LAST_STREAM, FIRST_STREAM_DATE_TIME_EST, 
+
+datediff(day, case when START_DATE >FIRST_STREAM_DATE_TIME_EST then FIRST_STREAM_DATE_TIME_EST else START_DATE end ,FIRST_STREAM_DATE_TIME_EST) as DAY_UNTILL_FIRST_STREAM,
+    
+TOTAL_STREAM_TIME_WEB_MS_ITD/60000 as STREAM_MIN_WEB ,
+TOTAL_STREAM_TIME_MOBILE_MS_ITD as STREAM_MIN_MOBILE,
+TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD as STREAM_MIN_CTV,
+
+
+case 
+when TOTAL_STREAM_TIME_WEB_MS_ITD > GREATEST(TOTAL_STREAM_TIME_MOBILE_MS_ITD,TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD, TOTAL_STREAM_TIME_UNKNOWN_MS_ITD) then 'web'
+when TOTAL_STREAM_TIME_MOBILE_MS_ITD > GREATEST(TOTAL_STREAM_TIME_WEB_MS_ITD ,TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD, TOTAL_STREAM_TIME_UNKNOWN_MS_ITD) then 'mobile'
+when TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD > GREATEST(TOTAL_STREAM_TIME_MOBILE_MS_ITD,TOTAL_STREAM_TIME_WEB_MS_ITD , TOTAL_STREAM_TIME_UNKNOWN_MS_ITD) then 'tv' 
+when TOTAL_STREAM_TIME_UNKNOWN_MS_ITD > GREATEST(TOTAL_STREAM_TIME_MOBILE_MS_ITD,TOTAL_STREAM_TIME_CONNECTED_TV_MS_ITD, TOTAL_STREAM_TIME_WEB_MS_ITD) then 'unkown'
+else 'no_stream' END as device_most_used,
+
+--hs vistas de cada tipo de contenido 
+
+round(Promotional_WATCH_LENGTH_MS/3600000, 2) as Promotional_WATCH_LENGTH_HS, 
+round(ShortForm_WATCH_LENGTH_MS/3600000, 2) as ShortForm_WATCH_LENGTH_HS, 
+round(Movie_WATCH_LENGTH_MS/3600000, 2) as Movie_WATCH_LENGTH_HS, 
+round(Serie_WATCH_LENGTH_MS/3600000, 2) as Serie_WATCH_LENGTH_HS, 
+round(Supplement_WATCH_LENGTH_MS/3600000, 2) as Supplement_WATCH_LENGTH_hS,
+        
+
+--calculo variables de % del tiempo visto que dedico la cuenta a cada tipo de contenido
+
+round((Promotional_WATCH_LENGTH_MS/TOTAL_WATCH_LENGTH_MS)*100, 2) as share_Promotional_WATCH_LENGTH, 
+round((ShortForm_WATCH_LENGTH_MS/TOTAL_WATCH_LENGTH_MS)*100, 2) as share_ShortForm_WATCH_LENGTH, 
+round((Movie_WATCH_LENGTH_MS/TOTAL_WATCH_LENGTH_MS)*100, 2) as share_Movie_WATCH_LENGTH, 
+round((Serie_WATCH_LENGTH_MS/TOTAL_WATCH_LENGTH_MS)*100, 2) as share_Serie_WATCH_LENGTH, 
+round((Supplement_WATCH_LENGTH_MS/TOTAL_WATCH_LENGTH_MS)*100, 2) as share_Supplement_WATCH_LENGTH
+        
+FROM SUBSCRIPTIONS S
+LEFT JOIN START_DATE SD
+ON S.ACCOUNT_ID= SD.ACCOUNT_ID
+LEFT JOIN LABEL L
+ON S.ACCOUNT_ID= L.ACCOUNT_ID
+LEFT JOIN DEVICES D
+ON S.ACCOUNT_ID= D.ACCOUNT_ID
+LEFT JOIN BRAND_SEGMENT BS
+ON S.ACCOUNT_ID= BS.ACCOUNT_ID
+LEFT JOIN ENGAGEMENT E
+ON S.ACCOUNT_ID= E.ACCOUNT_ID
+LEFT JOIN FIRST_STREAM FS
+ON S.ACCOUNT_ID= FS.ACCOUNT_ID
+LEFT JOIN SHARE_CONTENT SC
+ON S.ACCOUNT_ID= SC.ACCOUNT_ID
+)  
+
+credentials = (aws_key_id='AKIAZWZ3FA4AN3B5WYOX' aws_secret_key='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' )
+file_format = (TYPE = PARQUET )
+OVERWRITE = TRUE
+HEADER = TRUE;
