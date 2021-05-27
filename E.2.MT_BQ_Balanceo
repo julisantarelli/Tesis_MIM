@@ -1,0 +1,16 @@
+CREATE OR REPLACE VIEW `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_bnc`
+as 
+with exclude_outliers as
+(select * from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn`
+where 
+(DEVICE_COUNT is null or DEVICE_COUNT <= 50) )
+
+(SELECT *
+FROM exclude_outliers
+WHERE RAND() < (((SELECT count(*) FROM exclude_outliers WHERE CHURN = 1)*2)/
+(SELECT count(*) FROM exclude_outliers))
+AND CHURN = 0)
+
+UNION ALL 
+
+(SELECT * FROM exclude_outliers WHERE CHURN = 1)
