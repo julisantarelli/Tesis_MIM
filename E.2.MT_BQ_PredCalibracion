@@ -1,0 +1,19 @@
+CREATE OR REPLACE TABLE  `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_pred_imp_feat_prediction_calib` as
+WITH calibrated_preds AS
+(
+
+SELECT ACCOUNT_ID,
+(prob * 0.53) / ( ( prob * 0.53) - prob + 1 ) as calibrated_prob,
+
+from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_pred_imp_feat_prediction`,
+UNNEST( predicted_CHURN_probs ) AS pred
+where
+pred.label = 1)
+
+,thresholds as
+(select *,
+case when calibrated_prob >= 0.27 then 1 else 0 end as Escenario_1,
+case when calibrated_prob >= 0.35 then 1 else 0 end as Escenario_2
+from calibrated_preds)
+
+select * from  `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_pred_imp_feat` left join thresholds using(ACCOUNT_ID)
