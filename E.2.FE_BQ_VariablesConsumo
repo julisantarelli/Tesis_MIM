@@ -1,0 +1,462 @@
+create or replace table  `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.account_watches_features` as 
+
+with watches_att as
+(
+select 
+distinct ACCOUNT_ID, ID, SEEN,
+
+
+case when IS_ANIMATED = 'TRUE' then 1 else 0 end as IS_ANIMATED,
+case when IS_DISNEY_PLUS_ORIGINAL  = true then 1 else 0 end as IS_DISNEY_PLUS_ORIGINAL,
+case when IS_PAY_1 = 'TRUE' then 1 else 0 end as IS_PAY_1,
+
+case when PROGRAMTYPE = 'movie' then 1 else 0 end as movie,
+case when PROGRAMTYPE = 'episode' then 1 else 0 end as episode,
+case when PROGRAMTYPE = 'short-form' then 1 else 0 end as short_form, 
+
+case when CENTROID_ID = 1 then 1 else 0 end as centroid_1,
+case when CENTROID_ID = 2 then 1 else 0 end as centroid_2,
+case when CENTROID_ID = 3 then 1 else 0 end as centroid_3,
+case when CENTROID_ID = 4 then 1 else 0 end as centroid_4,
+case when CENTROID_ID = 5 then 1 else 0 end as centroid_5,
+case when CENTROID_ID = 6 then 1 else 0 end as centroid_6,
+case when CENTROID_ID = 7 then 1 else 0 end as centroid_7,
+case when CENTROID_ID = 8 then 1 else 0 end as centroid_8,
+case when CENTROID_ID = 9 then 1 else 0 end as centroid_9,
+case when CENTROID_ID = 10 then 1 else 0 end as centroid_10,
+
+case when BRANDS = 'Marvel' then 1 else 0 end as BRANDS_Marvel,
+case when BRANDS = 'Star Wars' then 1 else 0 end as BRANDS_StarWars,
+case when BRANDS = 'Star' then 1 else 0 end as BRANDS_Star,
+case when BRANDS = 'Disney' then 1 else 0 end as BRANDS_Disney,
+case when BRANDS = 'National Geographic' then 1 else 0 end as BRANDS_Natgeo,
+case when BRANDS = 'Pixar' then 1 else 0 end as BRANDS_Pixar,
+
+
+
+case when FRANCHISES = 'WDSLA' then 1 else 0 end as franchise_WDSLA,
+case when FRANCHISES = 'Disney Channel' then 1 else 0 end as franchise_DC,
+case when FRANCHISES = 'DCOMs|DisneyChannel' or FRANCHISES = 'DisneyChannel|DCOMs' then 1 else 0 end as franchise_DCOM_DC,
+case when FRANCHISES like '%Villain' or  FRANCHISES like 'Villain%' or  FRANCHISES like '%Villain%' then 1 else 0 end as franchise_Villains,
+case when FRANCHISES = 'Disney Junior' then 1 else 0 end as franchise_DJ,
+case when FRANCHISES = 'WDAS' then 1 else 0 end as franchise_WDAS,
+case when FRANCHISES = 'Cars' then 1 else 0 end as franchise_Cars,
+case when FRANCHISES = 'ToyStory' then 1 else 0 end as franchise_ToyStory,
+case when FRANCHISES = 'Disney XD' then 1 else 0 end as franchise_DisneyXD,
+case when FRANCHISES = 'Mickey&Friends|WDAS' then 1 else 0 end as franchise_MickeyFriends,
+
+case when PRODUCTION_COMPANY = 'Walt Disney Pictures' then 1 else 0 end as Prod_Com_Walt_Disney_Pictures,
+case when PRODUCTION_COMPANY = 'Disney Channel' then 1 else 0 end as Prod_Com_Disney_Channel,
+case when PRODUCTION_COMPANY = 'Pixar' then 1 else 0 end as Prod_Com_Pixar,
+case when PRODUCTION_COMPANY = 'Walt Disney Productions' then 1 else 0 end as Prod_Com_Walt_Disney_Productions,
+case when PRODUCTION_COMPANY = '20Th Century Fox' then 1 else 0 end as Prod_Com_20Th_Century_Fox,
+case when PRODUCTION_COMPANY = 'Marvel' then 1 else 0 end as Prod_Com_Marvel,
+case when PRODUCTION_COMPANY = 'Lucasfilm' then 1 else 0 end as Prod_Com_Lucasfilm,
+case when PRODUCTION_COMPANY = 'Walt Disney Television Animation' then 1 else 0 end as Prod_Com_Walt_Disney_Television_Animation,
+case when PRODUCTION_COMPANY = 'Walt Disney Animation Studios' then 1 else 0 end as Prod_Com_Walt_Disney_Animation_Studios,
+case when PRODUCTION_COMPANY = 'Walt Disney Television' then 1 else 0 end as Prod_Com_Walt_Disney_Television,
+case when PRODUCTION_COMPANY = 'Disney XD' then 1 else 0 end as Prod_Com_Disney_XD,
+case when PRODUCTION_COMPANY = 'Disney Junior' then 1 else 0 end as Prod_Com_Disney_Junior,
+case when PRODUCTION_COMPANY = 'Disneynature' then 1 else 0 end as Prod_Com_Disneynature,
+case when PRODUCTION_COMPANY = 'ABC Family' then 1 else 0 end as Prod_Com_ABC_Family,
+case when PRODUCTION_COMPANY = 'Touchstone Pictures' then 1 else 0 end as Prod_Com_Touchstone_Pictures,
+case when PRODUCTION_COMPANY = 'National Geographic' then 1 else 0 end as Prod_Com_National_Geographic,
+case when PRODUCTION_COMPANY = 'DisneyToon Studios' then 1 else 0 end as Prod_Com_DisneyToon_Studios,
+case when PRODUCTION_COMPANY = 'Disney+ Studios' then 1 else 0 end as Prod_Com_Disneyplus_Studios,
+
+case when BUSINESS_UNIT = 'STUDIO - WDSLA' then 1 else 0 end as BU_STUDIO_WDSLA,
+case when BUSINESS_UNIT = 'DCWW - DISNEY CHANNEL' then 1 else 0 end as BU_DCWW_DISNEY_CHANNEL,
+case when BUSINESS_UNIT = 'STUDIO - ANIMATED' then 1 else 0 end as BU_STUDIO_ANIMATED,
+case when BUSINESS_UNIT = 'NATIONAL GEOGRAPHIC' then 1 else 0 end as BU_NATIONAL_GEOGRAPHIC,
+case when BUSINESS_UNIT = 'STUDIO - FOX' then 1 else 0 end as BU_STUDIO_FOX,
+case when BUSINESS_UNIT = 'PIXAR' then 1 else 0 end as BU_PIXAR,
+case when BUSINESS_UNIT = 'DISNEY+' then 1 else 0 end as BU_DISNEYPLUS,
+case when BUSINESS_UNIT = 'MARVEL STUDIOS' then 1 else 0 end as BU_MARVEL_STUDIOS,
+case when BUSINESS_UNIT = 'DCWW - DISNEY JUNIOR' then 1 else 0 end as BU_DCWW_DISNEY_JUNIOR,
+case when BUSINESS_UNIT = 'DCWW - INTERNATIONAL' then 1 else 0 end as BU_DCWW_INTERNATIONAL,
+case when BUSINESS_UNIT = 'DCWW - DISNEY XD' then 1 else 0 end as BU_DCWW_DISNEY_XD,
+case when BUSINESS_UNIT = 'LUCASFILM' then 1 else 0 end as BU_LUCASFILM,
+case when BUSINESS_UNIT = 'MARVEL ENTERTAINMENT' then 1 else 0 end as BU_MARVEL_ENTERTAINMENT,
+case when BUSINESS_UNIT = 'DCWW - MARVEL ENTERTAINMENT' then 1 else 0 end as BU_DCWW_MARVEL_ENTERTAINMENT,
+case when BUSINESS_UNIT = 'STUDIO - OTHER' then 1 else 0 end as BU_STUDIO_OTHER,
+case when BUSINESS_UNIT = 'STUDIO - DISNEYNATURE' then 1 else 0 end as BU_STUDIO_DISNEYNATURE,
+case when BUSINESS_UNIT = 'STUDIO - BLUE SKY' then 1 else 0 end as BU_STUDIO_BLUE_SKY,
+
+
+case when Comedy = '1' then 1 else 0 end as Comedy,
+case when Animation = '1' then 1 else 0 end as Animation,
+case when Action_Adventure = '1' then 1 else 0 end as Action_Adventure,
+case when Fantasy = '1' then 1 else 0 end as Fantasy,
+case when Kids = '1' then 1 else 0 end as Kids,
+case when Coming_of_age = '1' then 1 else 0 end as Coming_of_age,
+case when Science_Fiction = '1' then 1 else 0 end as Science_Fiction,
+case when Drama = '1' then 1 else 0 end as Drama,
+case when Animals___Nature = '1' then 1 else 0 end as Animals___Nature,
+case when Musical = '1' then 1 else 0 end as Musical,
+case when Documentary = '1' then 1 else 0 end as Documentary,
+case when Romance = '1' then 1 else 0 end as Romance,
+case when Docuseries = '1' then 1 else 0 end as Docuseries,
+case when Sports = '1' then 1 else 0 end as Sports,
+case when Music = '1' then 1 else 0 end as Music,
+
+case when RELEASE_YEAR_MIN < 1960 then 1 else 0 end as period0_1960,
+case when RELEASE_YEAR_MIN >= 1960 and RELEASE_YEAR_MIN < 1965 then 1 else 0 end as  period1960_1965,
+case  when RELEASE_YEAR_MIN >= 1965 and RELEASE_YEAR_MIN < 1970 then 1 else 0 end as  period1965_1970,
+case  when RELEASE_YEAR_MIN >= 1975 and RELEASE_YEAR_MIN < 1980 then 1 else 0 end as  period1975_1980,
+case  when RELEASE_YEAR_MIN >= 1980 and RELEASE_YEAR_MIN < 1985 then 1 else 0 end as  period1980_1985,
+case  when RELEASE_YEAR_MIN >= 1990 and RELEASE_YEAR_MIN < 1995 then 1 else 0 end as  period1990_1995,
+case  when RELEASE_YEAR_MIN >= 2000 and RELEASE_YEAR_MIN < 2005 then 1 else 0 end as  period2000_2005,
+case  when RELEASE_YEAR_MIN >= 2005 and RELEASE_YEAR_MIN < 2010 then 1 else 0 end as  period2005_2010,
+case  when RELEASE_YEAR_MIN >= 2010 and RELEASE_YEAR_MIN < 2015 then 1 else 0 end as  period2010_2015,
+case  when RELEASE_YEAR_MIN >= 2020 and RELEASE_YEAR_MIN < 2025 then 1 else 0 end as period2020_2025, 
+
+
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE = 'episode'
+                  order by ACCOUNT_WATCHES desc
+                  limit 5) then 1 else 0 end as WATCH_TOP5_SERIES,
+                  
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE = 'episode'
+                  order by ACCOUNT_WATCHES desc
+                  limit 10) then 1 else 0 end as WATCH_TOP10_SERIES,
+
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE = 'movie'
+                  order by ACCOUNT_WATCHES desc
+                  limit 5) then 1 else 0 end as WATCH_TOP5_MOVIES,
+                  
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE = 'movie'
+                  order by ACCOUNT_WATCHES desc
+                  limit 10) then 1 else 0 end as WATCH_TOP10_MOVIES,
+                  
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE != 'episode' and PROGRAMTYPE != 'movie'
+                  order by ACCOUNT_WATCHES desc
+                  limit 5) then 1 else 0 end as WATCH_TOP5_SHORTS,
+                  
+case when ID in (select CONTENT_UNIT_ID from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a
+                  left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b
+                  on CONTENT_UNIT_ID= idmix
+                  where PROGRAMTYPE != 'episode' and PROGRAMTYPE != 'movie'
+                  order by ACCOUNT_WATCHES desc
+                  limit 10) then 1 else 0 end as WATCH_TOP10_SHORTS
+
+
+from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_all_first_train` 
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction`
+on ID = idmix)
+
+
+
+,COUNTEPISODE AS
+(SELECT distinct ACCOUNT_ID, 
+CASE WHEN ID = 'E54F-B589-20B9-2BFE-C106-C' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_FALCON, -- ID DE The Falcon and The Winter Soldier
+CASE WHEN ID = '58DD-06EB-3EED-A705-EE28-7' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_SIMPSONS, --ID LOS SIMPSONS
+CASE WHEN ID = '76E7-2A37-63FF-0A2F-1648-Y' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_WANDAVISION, -- ID WandaVision
+CASE WHEN ID = '728F-936D-32C8-19FA-6D02-B' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_MANDALORIAN, -- ID The Mandalorian
+CASE WHEN ID = 'Jessie' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_JESSE, -- ID JESSE
+CASE WHEN ID = 'E177-10ED-6466-4065-5134-Z' THEN MAX_EPISODE_SERIES_SEQUENCE_NUMBER_	 ELSE 0 END AS EPISODES_MMCLUBHOUSE -- ID Mickey Mouse Clubhouse
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_series_train`)
+
+,ACCOUNT_SERIES_EPISODES AS
+(SELECT distinct ACCOUNT_ID, 
+MAX(EPISODES_FALCON) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_FALCON,
+MAX(EPISODES_SIMPSONS) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_SIMPSONS,
+MAX(EPISODES_WANDAVISION) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_WANDAVISION,
+MAX(EPISODES_MANDALORIAN) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_MANDALORIAN,
+MAX(EPISODES_JESSE) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_JESSE,
+MAX(EPISODES_MMCLUBHOUSE) OVER(PARTITION BY ACCOUNT_ID) as EPISODES_MMCLUBHOUSE
+
+FROM COUNTEPISODE)
+
+,ACCOUNT_WATCH_ATT AS
+(SELECT distinct ACCOUNT_ID, 
+SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID) as TOTAL_SEEN,
+
+SUM(IS_ANIMATED) OVER(PARTITION BY ACCOUNT_ID) as IS_ANIMATED,
+SUM(IS_DISNEY_PLUS_ORIGINAL) OVER(PARTITION BY ACCOUNT_ID) as IS_DISNEY_PLUS_ORIGINAL,
+SUM(IS_PAY_1) OVER(PARTITION BY ACCOUNT_ID) as IS_PAY_1,
+
+SUM(movie) OVER(PARTITION BY ACCOUNT_ID) as movie,
+SUM(movie) OVER(PARTITION BY ACCOUNT_ID) as episode,
+SUM(short_form) OVER(PARTITION BY ACCOUNT_ID) as short_form,
+
+case when (SUM(movie) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.7 then 1 else 0 end as movie_70,
+case when (SUM(movie) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.7 then 1 else 0 end as episode_70,
+case when (SUM(short_form) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.7 then 1 else 0 end as short_form_70,
+
+case when (SUM(movie) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.25 then 1 else 0 end as movie_25,
+case when (SUM(movie) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.25 then 1 else 0 end as episode_25,
+case when (SUM(short_form) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.25 then 1 else 0 end as short_form_25,
+
+
+SUM(centroid_1) OVER(PARTITION BY ACCOUNT_ID) as centroid_1,
+SUM(centroid_2) OVER(PARTITION BY ACCOUNT_ID) as centroid_2,
+SUM(centroid_3) OVER(PARTITION BY ACCOUNT_ID) as centroid_3,
+SUM(centroid_4) OVER(PARTITION BY ACCOUNT_ID) as centroid_4,
+SUM(centroid_5) OVER(PARTITION BY ACCOUNT_ID) as centroid_5,
+SUM(centroid_6) OVER(PARTITION BY ACCOUNT_ID) as centroid_6,
+SUM(centroid_7) OVER(PARTITION BY ACCOUNT_ID) as centroid_7,
+SUM(centroid_8) OVER(PARTITION BY ACCOUNT_ID) as centroid_8,
+SUM(centroid_9) OVER(PARTITION BY ACCOUNT_ID) as centroid_9,
+SUM(centroid_10) OVER(PARTITION BY ACCOUNT_ID) as centroid_10,
+
+case when (SUM(centroid_1) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid1_50,
+case when (SUM(centroid_2) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid2_50,
+case when (SUM(centroid_3) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid3_50,
+case when (SUM(centroid_4) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid4_50,
+case when (SUM(centroid_5) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid5_50,
+case when (SUM(centroid_6) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid6_50,
+case when (SUM(centroid_7) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid7_50,
+case when (SUM(centroid_8) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid8_50,
+case when (SUM(centroid_9) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid9_50,
+case when (SUM(centroid_10) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as centroid10_50,
+
+case when (SUM(centroid_1) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid1_30,
+case when (SUM(centroid_2) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid2_30,
+case when (SUM(centroid_3) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid3_30,
+case when (SUM(centroid_4) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid4_30,
+case when (SUM(centroid_5) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid5_30,
+case when (SUM(centroid_6) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid6_30,
+case when (SUM(centroid_7) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid7_30,
+case when (SUM(centroid_8) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid8_30,
+case when (SUM(centroid_9) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid9_30,
+case when (SUM(centroid_10) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as centroid10_30,
+
+case when (SUM(centroid_1) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid1_10,
+case when (SUM(centroid_2) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid2_10,
+case when (SUM(centroid_3) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid3_10,
+case when (SUM(centroid_4) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid4_10,
+case when (SUM(centroid_5) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid5_10,
+case when (SUM(centroid_6) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid6_10,
+case when (SUM(centroid_7) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid7_10,
+case when (SUM(centroid_8) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid8_10,
+case when (SUM(centroid_9) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid9_10,
+case when (SUM(centroid_10) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as centroid10_10,
+
+SUM(BRANDS_Marvel) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_Marvel,
+SUM(BRANDS_StarWars) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_StarWars,
+SUM(BRANDS_Star) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_Star,
+SUM(BRANDS_Disney) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_Disney,
+SUM(BRANDS_Natgeo) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_Natgeo,
+SUM(BRANDS_Pixar) OVER(PARTITION BY ACCOUNT_ID) as BRANDS_Pixar,
+
+case when (SUM(BRANDS_Marvel) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_Marvel_50,
+case when (SUM(BRANDS_StarWars) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_StarWars_50,
+case when (SUM(BRANDS_Star) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_Star_50,
+case when (SUM(BRANDS_Disney) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_Disney_50,
+case when (SUM(BRANDS_Natgeo) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_Natgeo_50,
+case when (SUM(BRANDS_Pixar) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.5 then 1 else 0 end as BRANDS_Pixar_50,
+
+
+
+case when (SUM(BRANDS_Marvel) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_Marvel_30,
+case when (SUM(BRANDS_StarWars) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_StarWars_30,
+case when (SUM(BRANDS_Star) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_Star_30,
+case when (SUM(BRANDS_Disney) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_Disney_30,
+case when (SUM(BRANDS_Natgeo) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_Natgeo_30,
+case when (SUM(BRANDS_Pixar) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.30 then 1 else 0 end as BRANDS_Pixar_30,
+
+
+
+case when (SUM(BRANDS_Marvel) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as BRANDS_Marvel_20,
+case when (SUM(BRANDS_StarWars) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.2 then 1 else 0 end as BRANDS_StarWars_20,
+case when (SUM(BRANDS_Star) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.2 then 1 else 0 end as BRANDS_Star_20,
+case when (SUM(BRANDS_Disney) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as BRANDS_Disney_20,
+case when (SUM(BRANDS_Natgeo) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as BRANDS_Natgeo_20,
+case when (SUM(BRANDS_Pixar) OVER(PARTITION BY ACCOUNT_ID)/SUM(SEEN) OVER(PARTITION BY ACCOUNT_ID)) >= 0.20 then 1 else 0 end as BRANDS_Pixar_20,
+
+SUM(franchise_WDSLA) OVER(PARTITION BY ACCOUNT_ID) as franchise_WDSLA,
+SUM(franchise_DC) OVER(PARTITION BY ACCOUNT_ID) as franchise_DC,
+SUM(franchise_DCOM_DC) OVER(PARTITION BY ACCOUNT_ID) as franchise_DCOM_DC,
+SUM(franchise_Villains) OVER(PARTITION BY ACCOUNT_ID) as franchise_Villains,
+SUM(franchise_DJ) OVER(PARTITION BY ACCOUNT_ID) as franchise_DJ,
+SUM(franchise_Cars) OVER(PARTITION BY ACCOUNT_ID) as franchise_Cars,
+SUM(franchise_ToyStory) OVER(PARTITION BY ACCOUNT_ID) as franchise_ToyStory,
+SUM(franchise_DisneyXD) OVER(PARTITION BY ACCOUNT_ID) as franchise_DisneyXD,
+SUM(franchise_MickeyFriends) OVER(PARTITION BY ACCOUNT_ID) as franchise_MickeyFriends,
+
+SUM(Prod_Com_Walt_Disney_Pictures) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Walt_Disney_Pictures,
+SUM(Prod_Com_Disney_Channel) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Disney_Channel,
+SUM(Prod_Com_Pixar) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Pixar,
+SUM(Prod_Com_Walt_Disney_Productions) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Walt_Disney_Productions,
+SUM(Prod_Com_20Th_Century_Fox) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_20Th_Century_Fox,
+SUM(Prod_Com_Marvel) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Marvel,
+SUM(Prod_Com_Lucasfilm) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Lucasfilm,
+SUM(Prod_Com_Walt_Disney_Television_Animation) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Walt_Disney_Television_Animation,
+SUM(Prod_Com_Walt_Disney_Animation_Studios) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Walt_Disney_Animation_Studios,
+SUM(Prod_Com_Walt_Disney_Television) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Walt_Disney_Television,
+SUM(Prod_Com_Disney_XD) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Disney_XD,
+SUM(Prod_Com_Disney_Junior) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Disney_Junior,
+SUM(Prod_Com_Disneynature) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Disneynature,
+SUM(Prod_Com_ABC_Family) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_ABC_Family,
+SUM(Prod_Com_National_Geographic) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_National_Geographic,
+SUM(Prod_Com_DisneyToon_Studios) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_DisneyToon_Studios,
+SUM(Prod_Com_Disneyplus_Studios) OVER(PARTITION BY ACCOUNT_ID) as Prod_Com_Disneyplus_Studios,
+
+
+SUM(BU_STUDIO_WDSLA) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_WDSLA,
+SUM(BU_DCWW_DISNEY_CHANNEL) OVER(PARTITION BY ACCOUNT_ID) as BU_DCWW_DISNEY_CHANNEL,
+SUM(BU_STUDIO_ANIMATED) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_ANIMATED,
+SUM(BU_NATIONAL_GEOGRAPHIC) OVER(PARTITION BY ACCOUNT_ID) as BU_NATIONAL_GEOGRAPHIC,
+SUM(BU_STUDIO_FOX) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_FOX,
+SUM(BU_PIXAR) OVER(PARTITION BY ACCOUNT_ID) as BU_PIXAR,
+SUM(BU_DISNEYPLUS) OVER(PARTITION BY ACCOUNT_ID) as BU_DISNEYPLUS,
+SUM(BU_MARVEL_STUDIOS) OVER(PARTITION BY ACCOUNT_ID) as BU_MARVEL_STUDIOS,
+SUM(BU_DCWW_DISNEY_JUNIOR) OVER(PARTITION BY ACCOUNT_ID) as BU_DCWW_DISNEY_JUNIOR,
+SUM(BU_DCWW_INTERNATIONAL) OVER(PARTITION BY ACCOUNT_ID) as BU_DCWW_INTERNATIONAL,
+SUM(BU_DCWW_DISNEY_XD) OVER(PARTITION BY ACCOUNT_ID) as BU_DCWW_DISNEY_XD,
+SUM(BU_MARVEL_ENTERTAINMENT) OVER(PARTITION BY ACCOUNT_ID) as BU_MARVEL_ENTERTAINMENT,
+SUM(BU_STUDIO_OTHER) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_OTHER,
+SUM(BU_STUDIO_DISNEYNATURE) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_DISNEYNATURE,
+SUM(BU_STUDIO_BLUE_SKY) OVER(PARTITION BY ACCOUNT_ID) as BU_STUDIO_BLUE_SKY,
+
+
+SUM(Comedy) OVER(PARTITION BY ACCOUNT_ID) as Comedy,
+SUM(Animation) OVER(PARTITION BY ACCOUNT_ID) as Animation,
+SUM(Action_Adventure) OVER(PARTITION BY ACCOUNT_ID) as Action_Adventure,
+SUM(Fantasy) OVER(PARTITION BY ACCOUNT_ID) as Fantasy,
+SUM(Kids) OVER(PARTITION BY ACCOUNT_ID) as Kids,
+SUM(Coming_of_age) OVER(PARTITION BY ACCOUNT_ID) as Coming_of_age,
+SUM(Science_Fiction) OVER(PARTITION BY ACCOUNT_ID) as Science_Fiction,
+SUM(Drama) OVER(PARTITION BY ACCOUNT_ID) as Drama,
+SUM(Animals___Nature) OVER(PARTITION BY ACCOUNT_ID) as Animals___Nature,
+SUM(Musical) OVER(PARTITION BY ACCOUNT_ID) as Musical,
+SUM(Documentary) OVER(PARTITION BY ACCOUNT_ID) as Documentary,
+SUM(Romance) OVER(PARTITION BY ACCOUNT_ID) as Romance,
+SUM(Docuseries) OVER(PARTITION BY ACCOUNT_ID) as Docuseries,
+SUM(Sports) OVER(PARTITION BY ACCOUNT_ID) as Sports,
+SUM(Music) OVER(PARTITION BY ACCOUNT_ID) as Music,
+
+SUM(period0_1960) OVER(PARTITION BY ACCOUNT_ID) as period0_1960,
+SUM(period1960_1965) OVER(PARTITION BY ACCOUNT_ID) as period1960_1965,
+SUM(period1965_1970) OVER(PARTITION BY ACCOUNT_ID) as period1965_1970,
+SUM(period1975_1980) OVER(PARTITION BY ACCOUNT_ID) as period1975_1980,
+SUM(period1980_1985) OVER(PARTITION BY ACCOUNT_ID) as period1980_1985,
+SUM(period1990_1995) OVER(PARTITION BY ACCOUNT_ID) as period1990_1995,
+SUM(period2000_2005) OVER(PARTITION BY ACCOUNT_ID) as period2000_2005,
+SUM(period2005_2010) OVER(PARTITION BY ACCOUNT_ID) as period2005_2010,
+SUM(period2010_2015) OVER(PARTITION BY ACCOUNT_ID) as period2010_2015,
+SUM(period2020_2025) OVER(PARTITION BY ACCOUNT_ID) as period2020_2025,
+
+SUM(WATCH_TOP5_SERIES) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP5_SERIES,
+SUM(WATCH_TOP10_SERIES) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP10_SERIES,
+SUM(WATCH_TOP5_MOVIES) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP5_MOVIES,
+SUM(WATCH_TOP10_MOVIES) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP10_MOVIES,
+SUM(WATCH_TOP5_SHORTS) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP5_SHORTS,
+SUM(WATCH_TOP10_SHORTS) OVER(PARTITION BY ACCOUNT_ID) as WATCH_TOP10_SHORTS,
+
+from watches_att)
+
+SELECT * EXCEPT(
+movie_70,
+episode_70,
+short_form_70,
+movie_25,
+episode_25,
+short_form_25,
+
+centroid1_50,
+centroid2_50,
+centroid3_50,
+centroid4_50,
+centroid5_50,
+centroid6_50,
+centroid7_50,
+centroid8_50,
+centroid9_50,
+centroid10_50,
+
+centroid1_30,
+centroid2_30,
+centroid3_30,
+centroid4_30,
+centroid5_30,
+centroid6_30,
+centroid7_30,
+centroid8_30,
+centroid9_30,
+centroid10_30,
+
+centroid1_10,
+centroid2_10,
+centroid3_10,
+centroid4_10,
+centroid5_10,
+centroid6_10,
+centroid7_10,
+centroid8_10,
+centroid9_10,
+centroid10_10,
+
+BRANDS_Marvel_50,
+BRANDS_StarWars_50,
+BRANDS_Star_50,
+BRANDS_Disney_50,
+BRANDS_Natgeo_50,
+BRANDS_Pixar_50,
+
+BRANDS_Marvel_30,
+BRANDS_StarWars_30,
+BRANDS_Star_30,
+BRANDS_Disney_30,
+BRANDS_Natgeo_30,
+BRANDS_Pixar_30,
+
+BRANDS_Marvel_20,
+BRANDS_StarWars_20,
+BRANDS_Star_20,
+BRANDS_Disney_20,
+BRANDS_Natgeo_20,
+BRANDS_Pixar_20), 
+
+CASE WHEN 
+movie_70+episode_70+short_form_70 = 1
+THEN 1 ELSE 0 END AS MONO_TYPE,
+
+CASE WHEN 
+movie_25+episode_25+short_form_25 = 2
+THEN 1 ELSE 0 END AS BI_TYPE,
+
+CASE WHEN 
+centroid1_50+centroid2_50+centroid3_50+centroid4_50+centroid5_50+centroid6_50+
+centroid7_50+centroid8_50+centroid9_50+centroid10_50 = 1
+THEN 1 ELSE 0 END AS MONO_CENTROID,
+
+CASE WHEN 
+centroid1_30+centroid2_30+centroid3_30+centroid4_30+centroid5_30+centroid6_30+
+centroid7_30+centroid8_30+centroid9_30+centroid10_30 = 2
+THEN 1 ELSE 0 END AS BI_CENTROID,
+
+CASE WHEN 
+centroid1_10+centroid2_10+centroid3_10+centroid4_10+centroid5_10+centroid6_10+
+centroid7_10+centroid8_10+centroid9_10+centroid10_10 >= 5
+THEN 1 ELSE 0 END AS MULTI_CENTROID,
+
+CASE WHEN 
+BRANDS_Marvel_50+BRANDS_StarWars_50+BRANDS_Star_50+BRANDS_Disney_50+BRANDS_Natgeo_50+BRANDS_Pixar_50 = 1
+THEN 1 ELSE 0 END AS MONO_BRAND,
+
+CASE WHEN 
+BRANDS_Marvel_30+BRANDS_StarWars_30+BRANDS_Star_30+BRANDS_Disney_30+BRANDS_Natgeo_30+BRANDS_Pixar_30 = 2
+THEN 1 ELSE 0 END AS BI_BRAND,
+
+CASE WHEN 
+BRANDS_Marvel_20+BRANDS_StarWars_20+BRANDS_Star_20+BRANDS_Disney_20+BRANDS_Natgeo_20+BRANDS_Pixar_20 >= 4
+THEN 1 ELSE 0 END AS MULTI_BRAND,
+
+FROM ACCOUNT_WATCH_ATT
+left join ACCOUNT_SERIES_EPISODES 
+using(ACCOUNT_ID)
