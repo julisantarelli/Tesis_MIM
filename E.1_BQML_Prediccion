@@ -1,0 +1,8 @@
+CREATE OR REPLACE TABLE `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as
+SELECT 
+  * EXCEPT(nearest_centroids_distance)
+FROM
+  ML.PREDICT( MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_kmeans_10`,
+    (
+    select * 
+from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering` where latam_available = 1 ))
