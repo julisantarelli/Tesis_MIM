@@ -1,0 +1,26 @@
+DECLARE NUM_CLUSTERS INT64 DEFAULT 5;
+DECLARE MIN_ERROR FLOAT64 DEFAULT 1000.0;
+DECLARE BEST_NUM_CLUSTERS INT64 DEFAULT -1;
+DECLARE MODEL_NAME STRING;
+DECLARE error FLOAT64 DEFAULT 0;
+WHILE NUM_CLUSTERS < 21 AND NUM_CLUSTERS > 4 DO
+SET MODEL_NAME = CONCAT('DisneyPlusChurnAnalysis.metadata_kmeans_', 
+                            CAST(NUM_CLUSTERS AS STRING));
+EXECUTE IMMEDIATE format("""
+  CREATE OR REPLACE MODEL %s
+    OPTIONS(model_type='kmeans', 
+            num_clusters=%d, 
+            kmeans_init_method = 'KMEANS++',
+            standardize_features = true) AS
+    select * except(idmix,titlemix,PROGRAMTYPE,CONTENT_CLASS,Brazil,Caribbean,LATAM_HISP)
+from `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering` WHERE latam_available = 1;
+  """, MODEL_NAME, NUM_CLUSTERS);
+  EXECUTE IMMEDIATE format("""
+    SELECT davies_bouldin_index FROM ML.EVALUATE(MODEL %s);
+  """, MODEL_NAME) INTO error;
+    IF error < MIN_ERROR THEN
+       SET MIN_ERROR = error;
+       SET BEST_NUM_CLUSTERS = NUM_CLUSTERS;
+    END IF;
+  SET NUM_CLUSTERS = NUM_CLUSTERS + 1;
+END WHILE
