@@ -1,0 +1,18 @@
+CREATE OR REPLACE MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_1`
+OPTIONS(MODEL_TYPE='BOOSTED_TREE_CLASSIFIER',
+        BOOSTER_TYPE = 'GBTREE',
+        L1_REG = 0.5,
+        INPUT_LABEL_COLS = ['CHURN'])
+AS SELECT * FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_train`;
+
+--------------------------------------------------------------------------------------------------------------
+
+
+CREATE OR REPLACE MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`
+OPTIONS(MODEL_TYPE='BOOSTED_TREE_CLASSIFIER',
+        BOOSTER_TYPE = 'DART',
+        DART_NORMALIZE_TYPE = 'Tree',
+        INPUT_LABEL_COLS = ['CHURN'])
+AS SELECT * FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_train`;
+
+--------------------------------------------------------------------------------------------------------------
