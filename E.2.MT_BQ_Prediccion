@@ -1,0 +1,8 @@
+CREATE OR REPLACE TABLE  `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_test_predictions` as
+
+SELECT
+  *
+FROM
+ML.PREDICT(MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`,
+          TABLE `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_for_model_test`)
+          
