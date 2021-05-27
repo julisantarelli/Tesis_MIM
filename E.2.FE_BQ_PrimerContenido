@@ -1,0 +1,68 @@
+create or replace table `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.acc_first_watches_att` as  
+
+SELECT distinct ACCOUNT_ID, b.idmix, 
+
+b.titlemix as first_title,
+b.PROGRAM_FULL_TITLE as first_PROGRAM_FULL_TITLE,
+b.SERIES_FULL_TITLE as SERIES_FULL_TITLE,
+
+
+CENTROID_ID as first_CENTROID_ID,
+PROGRAMTYPE as firtst_PROGRAMTYPE,
+IS_ANIMATED as first_IS_ANIMATED, 
+BRANDS as first_BRANDS, 
+BRANDS_DETAILED as first_BRANDS_DETAILED, 
+IS_DISNEY_PLUS_ORIGINAL as first_IS_DISNEY_PLUS_ORIGINAL, 
+IS_PAY_1 as first_IS_PAY_1,
+
+
+
+
+Family as first_Family,
+Comedy as first_Comedy,
+Animation as first_Animation,
+Action_Adventure as first_Action_Adventure ,
+Fantasy as first_Fantasy,
+Kids as first_Kids,
+Coming_of_age as first_Coming_of_age,
+Science_Fiction as first_Science_Fiction,
+Drama as first_Drama,
+Animals___Nature as first_Animals_Nature,
+Musical as first_Musical,
+Documentary as first_Documentary,
+Romance as first_Romance,
+Docuseries as first_Docuseries,
+Sports as first_Sports,
+Music as first_Music,
+
+
+case when FRANCHISES = 'WDSLA' then 1 else 0 end as first_franchise_WDSLA,
+case when FRANCHISES = 'Disney Channel' then 1 else 0 end as first_franchise_DC,
+case when FRANCHISES = 'DCOMs|DisneyChannel' or FRANCHISES = 'DisneyChannel|DCOMs' then 1 else 0 end asfirst_franchise_DCOM_DC,
+case when FRANCHISES like '%Villain' or  FRANCHISES like 'Villain%' or  FRANCHISES like '%Villain%' then 1 else 0 end as first_franchise_Villains,
+case when FRANCHISES = 'Disney Junior' then 1 else 0 end as first_franchise_DJ,
+case when FRANCHISES = 'WDAS' then 1 else 0 end as first_franchise_WDAS,
+case when FRANCHISES = 'Cars' then 1 else 0 end as first_franchise_Cars,
+case when FRANCHISES = 'ToyStory' then 1 else 0 end as first_franchise_ToyStory,
+case when FRANCHISES = 'Disney XD' then 1 else 0 end as first_franchise_DisneyXD,
+case when FRANCHISES = 'Mickey&Friends|WDAS' then 1 else 0 end as first_franchise_MickeyFriends,
+case when RELEASE_YEAR_MIN < 1960 then '0-1960'
+       when RELEASE_YEAR_MIN >= 1960 and RELEASE_YEAR_MIN < 1965 then '1960-1965'
+        when RELEASE_YEAR_MIN >= 1965 and RELEASE_YEAR_MIN < 1970 then '1965-1970'
+        when RELEASE_YEAR_MIN >= 1975 and RELEASE_YEAR_MIN < 1980 then '1975-1980'
+        when RELEASE_YEAR_MIN >= 1980 and RELEASE_YEAR_MIN < 1985 then '1980-1985'
+        when RELEASE_YEAR_MIN >= 1990 and RELEASE_YEAR_MIN < 1995 then '1990-1995'
+        when RELEASE_YEAR_MIN >= 2000 and RELEASE_YEAR_MIN < 2005 then '2000-2005'
+        when RELEASE_YEAR_MIN >= 2005 and RELEASE_YEAR_MIN < 2010 then '2005-2010'
+        when RELEASE_YEAR_MIN >= 2010 and RELEASE_YEAR_MIN < 2015 then '2010-2015'
+        when RELEASE_YEAR_MIN >= 2020 and RELEASE_YEAR_MIN < 2025 then '2020-2025'
+        else 'no period' end as first_release,
+period as first_period
+
+
+
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.acc_first_watches` as a
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_mapping` as b
+on FIRST_STREAM_PROGRAM_ID =  PROGRAMID
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as c
+on b.idmix =  c.idmix
