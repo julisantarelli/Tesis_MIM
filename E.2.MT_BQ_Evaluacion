@@ -1,0 +1,24 @@
+SELECT
+  *
+FROM
+  ML.FEATURE_IMPORTANCE(MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`);
+  
+  
+SELECT
+  *
+FROM
+  ML.FEATURE_INFO(MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`);
+  
+  
+-----------------------------------------------------------------------------------------------------------  
+  
+  SELECT
+  *
+FROM
+  ML.FEATURE_IMPORTANCE(MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`);
+  
+  
+SELECT
+  *
+FROM
+  ML.FEATURE_INFO(MODEL `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.xgboost_DART1`);
