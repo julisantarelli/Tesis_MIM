@@ -1,0 +1,65 @@
+--CREO LA TABLA DE CONTENIDO Y RANKING Y LE AGREGO EL CLUSTER
+WITH CONTENT_RANKING_CLUSTER AS( 
+SELECT a.*, b.CENTROID_ID
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.content_account_watches_ranking` as a 
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b 
+on a.CONTENT_UNIT_ID =  b.idmix
+where ACCOUNT_WATCHES is not null and CENTROID_ID is not null -- SACAR ESTO CUANDO ESTE LIMPIO LA BAJADA DE RANKING Y LA METADATA CLUSTERING
+)
+
+--TRAIGO EL LISTADO DE CUENTAS Q VAN A CHURNEAR CON SU CLUSTER
+, CHURN_ACCOUNTS as (                 
+SELECT ACCOUNT_ID, CENTROID_ID
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.Dataset_churn_predict_for_model_prediction` 
+where predicted_CHURN = 1
+)
+
+
+--al listado de watches le agrego el centroid de cada contenido
+, WATCHES_CENTROID as (
+SELECT distinct ACCOUNT_ID, ID, CENTROID_ID
+FROM `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.watches_all_first_predict` as a 
+left join `data-strategy-latam-gcp-prd-56.DisneyPlusChurnAnalysis.metadata_clustering_prediction` as b 
+on a.ID =  b.idmix
+)
+
+--TRAIGO EL LISTADO DE TITULOS de su cluster QUE VIERON LAS CUENTAS Q VAN A CHURNEAR Y EL CLUSTER 
+, CHURN_WATCHES as (
+SELECT a.ACCOUNT_ID, a.CENTROID_ID, b.ID       --TRAIGO EL LISTADO DE TITULOS QUE VIERON LAS CUENTAS Q VAN A CHURNEAR Y EL CLUSTER 
+FROM CHURN_ACCOUNTS as a 
+left join WATCHES_CENTROID as b
+using(ACCOUNT_ID,CENTROID_ID)
+)
+
+--para cada cuenta traigo todos los titulos disponibles en su cluster
+, CLUSTER_CONTENT_ACCOUNT as (             
+select a.ACCOUNT_ID, b.CONTENT_UNIT_ID as ID, b.CONTENT_TITLE, b.ACCOUNT_WATCHES, b.CENTROID_ID
+FROM CHURN_ACCOUNTS as a 
+left join CONTENT_RANKING_CLUSTER as b
+on a.CENTROID_ID = b.CENTROID_ID
+order by ACCOUNT_ID, ACCOUNT_WATCHES desc
+)
+
+--creo una dummy que diga si la cuenta vio ese titulo o no
+, CLUSTER_CONTENT_ACCOUNT_DUMMY as (                
+select a.*,
+case when a.ID = b.ID then 1 else 0 end as watch
+from CLUSTER_CONTENT_ACCOUNT as a
+left join CHURN_WATCHES as b
+using(ACCOUNT_ID,ID,CENTROID_ID)
+) 
+
+-- genero un ranking del contenido mas visto dentro de lo q le quda ver a cada cuenta
+, ACC_NOTSEEN_RANKING as (
+select ACCOUNT_ID, CONTENT_TITLE, ACCOUNT_WATCHES,            
+RANK() OVER (PARTITION BY ACCOUNT_ID ORDER BY ACCOUNT_WATCHES DESC) AS RANK_ACC,
+from CLUSTER_CONTENT_ACCOUNT_DUMMY
+where watch = 0 
+)
+
+-- selecciono top 5 por cuenta por ranking de acc watch, que no hayan sido vistos por la acc
+select * from ACC_NOTSEEN_RANKING                  
+where RANK_ACC <= 5
+order by  ACCOUNT_ID, RANK_ACC asc
+
+
